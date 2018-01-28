@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+	
+<form>
+	<fields name="passwordpolicy">
+		<fieldset name="passwordpolicy"
+			label="PLG_USER_PASSWORDPOLICY_SLIDER_LABEL"
+		>
+			<field
+				name="maximumPasswordAge"
+				type="integer"
+				default="0"
+				label="PLG_USER_PASSWORDPOLICY_MAXIMUMPASSWORDAGE_LABEL"
+				description="PLG_USER_PASSWORDPOLICY_MAXIMUMPASSWORDAGE_DESC"
+				first="0"
+				last="180"
+				step="1"
+			/>
+			<field 
+				name="pwdLastSet"
+				type="calendar"
+				label="PLG_USER_PASSWORDPOLICY_PASSWORDLASTSET_LABEL"
+				description="PLG_USER_PASSWORDPOLICY_PASSWORDLASTSET_DESC"
+				class="readonly"
+				readonly="true"
+				translateformat="true"
+				showtime="true"
+				size="22"
+				filter="user_utc"
+			/>
+
+		</fieldset>
+	</fields>
+</form>
