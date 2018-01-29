@@ -113,6 +113,17 @@ class plgUserPasswordpolicy extends JPlugin
 				{
 				}
 			}
+			else
+			{
+			    if (($days = $today->diff($date)->format('%a')) == 1)
+			    {
+			        JLog::add(new JLogEntry(JText::sprintf('PLG_USER_PASSWORDPOLICY_PASSWORDLLEXPIREIN_1', $days), JLog::WARNING, 'plg_user_passwordpolicy'));
+			    }
+			    elseif (in_array($days, array(2, 3, 7, 15, 30)))
+			    {
+			        JLog::add(new JLogEntry(JText::sprintf('PLG_USER_PASSWORDPOLICY_PASSWORDLLEXPIREIN', $days), JLog::WARNING, 'plg_user_passwordpolicy'));
+			    }
+			}
 		}
 		else 
 		{
