@@ -113,7 +113,7 @@ class plgUserPasswordpolicy extends JPlugin
 				{
 				}
 			}
-			else
+			elseif ($this->params->get('passwordExpirationReminder', 1))
 			{
 			    if (($days = $today->diff($date)->format('%a')) == 1)
 			    {
