@@ -275,35 +275,37 @@ class plgUserPasswordpolicy extends JPlugin
 	        return true;
 	    }
 	    
-	    $userId = isset($data->id) ? $data->id : 0;
+	    if (is_object($data))
+	    {
+	        $userId = isset($data->id) ? $data->id : 0;
 	    
-	    // Load the profile data from the database.
-	    $db = JFactory::getDbo();
-	    $db->setQuery($query = $db->getQuery(true)
-    	    ->select(array('profile_key','profile_value'))
-    	    ->from($db->qn('#__user_profiles'))
-    	    ->where($db->qn('user_id') . ' = ' . $userId)
-    	    ->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'))
-    	    ->order($db->qn('ordering'))
-    	    );
-	    JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
-	    $results = $db->loadRowList();
-	    JLog::add(new JLogEntry(print_r($results, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
+    	    // Load the profile data from the database.
+    	    $db = JFactory::getDbo();
+    	    $db->setQuery($query = $db->getQuery(true)
+        	    ->select(array('profile_key','profile_value'))
+        	    ->from($db->qn('#__user_profiles'))
+        	    ->where($db->qn('user_id') . ' = ' . $userId)
+        	    ->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'))
+        	    ->order($db->qn('ordering'))
+        	    );
+    	    JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+    	    $results = $db->loadRowList();
+    	    JLog::add(new JLogEntry(print_r($results, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
 	    
-	    // Check for a database error.
-	    if ($db->getErrorNum()) {
-	        $this->_subject->setError($db->getErrorMsg());
-	        return false;
+    	    // Check for a database error.
+    	    if ($db->getErrorNum()) {
+    	        $this->_subject->setError($db->getErrorMsg());
+    	        return false;
+    	    }
+	    
+    	    // Merge the profile data.
+    	    $data->passwordpolicy = array();
+    	    foreach ($results as $v) {
+    	        $k = str_replace('passwordpolicy.', '', $v[0]);
+    	        $data->passwordpolicy[$k] = json_decode($v[1], true);
+    	    }
 	    }
-	    
-	    // Merge the profile data.
-	    $data->passwordpolicy = array();
-	    foreach ($results as $v) {
-	        $k = str_replace('passwordpolicy.', '', $v[0]);
-	        $data->passwordpolicy[$k] = json_decode($v[1], true);
-	    }
-	    
-	    JLog::add(new JLogEntry(print_r($data, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
+
 	    return true;
 	}
 
