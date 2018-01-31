@@ -71,6 +71,7 @@ class plgUserPasswordpolicy extends JPlugin
     		->select(array('profile_key', 'profile_value'))
     		->from($db->qn('#__user_profiles'))
     		->where($db->qn('user_id') . ' = ' . $userId)
+    		//->where($db->qn('profile_key') . ' = ' . $db->q('passwordpolicy.maximumPasswordAge'))
     		->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'))
     		->order('ordering')
     		;
