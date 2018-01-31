@@ -61,42 +61,65 @@ class plgUserPasswordpolicy extends JPlugin
 		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
 		JLog::add(new JLogEntry(print_r($options, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
 
-		$maximumPasswordAge = $this->params->get('maximumPasswordAge', 0);
+		$user	  = $options['user'];
+		$userId   = $user->id;
+		$db		  = JFactory::getDbo();
+		$nullDate = $db->getNullDate();
+		$today    = JFactory::getDate();
 
-		if ($maximumPasswordAge)
+		$query    = $db->getQuery(true)
+    		->select(array('profile_key', 'profile_value'))
+    		->from($db->qn('#__user_profiles'))
+    		->where($db->qn('user_id') . ' = ' . $userId)
+    		->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'))
+    		->order('ordering')
+    		;
+		$db->setQuery($query);
+
+		try
 		{
-			JLog::add(new JLogEntry('maximumPasswordAge: ' . $maximumPasswordAge, JLog::DEBUG, 'plg_user_passwordpolicy'));
+		    $results = $db->loadRowList();
+		}
+		catch (RuntimeException $e)
+		{
+		    $this->_subject->setError($e->getMessage());
+		    
+		    return false;
+		}
+		
+		// Get the password policy data.
+		$passwordpolicy = array();
+		foreach ($results as $v)
+		{
+		    $k = str_replace('passwordpolicy.', '', $v[0]);
+		    $passwordpolicy[$k] = json_decode($v[1], true);
+		    
+		    if ($passwordpolicy[$k] === null)
+		    {
+		        $passwordpolicy[$k] = $v[1];
+		    }
+		}
 
-			$user	  = $options['user'];
-			$userId   = $user->id;
-			$db		  = JFactory::getDbo();
-			$nullDate = $db->getNullDate();
-			$today    = JFactory::getDate();
+		if (!isset($passwordpolicy['maximumPasswordAge']))
+		{
+		    $passwordpolicy['maximumPasswordAge'] = 0;
+		}
 
+		$passwordpolicy['maximumPasswordAge'] = min($passwordpolicy['maximumPasswordAge'], (int)$this->params->get('maximumPasswordAge', $passwordpolicy['maximumPasswordAge']));
 
-			$query    = $db->getQuery(true)
-				->select('profile_value')
-				->from($db->qn('#__user_profiles'))
-				->where($db->qn('user_id') . ' = ' . $userId)
-				->where($db->qn('profile_key') . ' = ' . $db->q('passwordpolicy.pwdLastSet'))
-				;
-			$db->setQuery($query);
+		if ($passwordpolicy['maximumPasswordAge'])
+		{
+		    JLog::add(new JLogEntry('maximumPasswordAge: ' . $passwordpolicy['maximumPasswordAge'], JLog::DEBUG, 'plg_user_passwordpolicy'));
 
-			try
-			{
-				$pwdLastSet = (json_decode($db->loadResult()) ?: $nullDate);
-			}
-			catch (Exception $e)
-			{
-				$pwdLastSet = $nullDate;
-			}
-			$date = new JDate((($pwdLastSet != $nullDate) ? $pwdLastSet : $user->registerDate) . ' + ' . $maximumPasswordAge . ' days');
+		    $date = new JDate((isset($passwordpolicy['pwdLastSet']) ? $passwordpolicy['pwdLastSet'] : $user->registerDate) . ' + ' . $passwordpolicy['maximumPasswordAge'] . ' days');
   
-			JLog::add(new JLogEntry('pwdLastSet: ' . $pwdLastSet, JLog::DEBUG, 'plg_user_passwordpolicy'));
+		    JLog::add(new JLogEntry('pwdLastSet: ' . (isset($passwordpolicy['pwdLastSet']) ? $passwordpolicy['pwdLastSet'] : $nullDate), JLog::DEBUG, 'plg_user_passwordpolicy'));
 			JLog::add(new JLogEntry('registerDate: ' . $user->registerDate, JLog::DEBUG, 'plg_user_passwordpolicy'));
 			JLog::add(new JLogEntry('today: ' . $today->toSql(), JLog::DEBUG, 'plg_user_passwordpolicy'));
 			JLog::add(new JLogEntry('expitation date: ' . $date->toSql(), JLog::DEBUG, 'plg_user_passwordpolicy'));
 
+			JLog::add(new JLogEntry('passwordExpirationReminder: ' . $this->params->get('passwordExpirationReminder', 1), JLog::DEBUG, 'plg_user_passwordpolicy'));
+			
 			if ($date < $today)
 			{
 				// Update the reset flag
@@ -115,7 +138,8 @@ class plgUserPasswordpolicy extends JPlugin
 			}
 			elseif ($this->params->get('passwordExpirationReminder', 1))
 			{
-			    if (($days = $today->diff($date)->format('%a')) == 1)
+			    JLog::add(new JLogEntry('passwordExpirationReminder', JLog::DEBUG, 'plg_user_passwordpolicy'));
+			    if (($days = $today->diff($date)->format('%a') + 1) == 1)
 			    {
 			        JLog::add(new JLogEntry(JText::sprintf('PLG_USER_PASSWORDPOLICY_PASSWORDLLEXPIREIN_1', $days), JLog::WARNING, 'plg_user_passwordpolicy'));
 			    }
@@ -197,20 +221,26 @@ class plgUserPasswordpolicy extends JPlugin
 	        try
 	        {    	            
 	            $db = JFactory::getDbo();
-	            
-	            $db->setQuery('DELETE FROM #__user_profiles WHERE user_id = '.$userId.' AND profile_key LIKE \'passwordpolicy.%\'');
-	            if (!$db->query()) {
+	            $query = $db->getQuery(true)
+    	            ->delete($db->qn('#__user_profiles'))
+    	            ->where($db->qn('user_id') . ' = ' . $userId)
+    	            ->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'));
+	            JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+	            if (!$db->setQuery($query)->query()) {
 	                throw new Exception($db->getErrorMsg());
 	            }
 
+	            $query = $db->getQuery(true)
+	               ->insert($db->qn('#__user_profiles'));
+	            
 	            $tuples = array();
 	            $order	= 1;
 	            foreach ($data_passwordpolicy as $k => $v) {
-	                $tuples[] = '('.$userId.', '.$db->quote('passwordpolicy.'.$k).', '.$db->quote(json_encode($v)).', '.$order++.')';
+	                $query->values($userId.', '.$db->quote('passwordpolicy.'.$k).', '.$db->quote(json_encode($v)).', '.$order++);
 	            }
 	            
-	            $db->setQuery('INSERT INTO #__user_profiles VALUES '.implode(', ', $tuples));
-	            if (!$db->query()) {
+	            JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+	            if (!$db->setQuery($query)->query()) {
 	                throw new Exception($db->getErrorMsg());
 	            }
 	        }
@@ -251,7 +281,7 @@ class plgUserPasswordpolicy extends JPlugin
 				$query = $db->getQuery(true)
 					->delete($db->qn('#__user_profiles'))
 					->where($db->qn('user_id') . ' = ' . $userId)
-					->where($db->qn('profile_key') . " LIKE 'passwordpolicy.%'");
+					->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'));
 				JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 				if (!$db->setQuery($query)->query()) {
 					throw new Exception($db->getErrorMsg());
@@ -286,35 +316,37 @@ class plgUserPasswordpolicy extends JPlugin
 	        return true;
 	    }
 	    
-	    $userId = isset($data->id) ? $data->id : 0;
+	    if (is_object($data))
+	    {
+	        $userId = isset($data->id) ? $data->id : 0;
 	    
-	    // Load the profile data from the database.
-	    $db = JFactory::getDbo();
-	    $db->setQuery($query = $db->getQuery(true)
-    	    ->select(array('profile_key','profile_value'))
-    	    ->from($db->qn('#__user_profiles'))
-    	    ->where($db->qn('user_id') . ' = ' . $userId)
-    	    ->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'))
-    	    ->order($db->qn('ordering'))
-    	    );
-	    JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
-	    $results = $db->loadRowList();
-	    JLog::add(new JLogEntry(print_r($results, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
+    	    // Load the profile data from the database.
+    	    $db = JFactory::getDbo();
+    	    $db->setQuery($query = $db->getQuery(true)
+        	    ->select(array('profile_key','profile_value'))
+        	    ->from($db->qn('#__user_profiles'))
+        	    ->where($db->qn('user_id') . ' = ' . $userId)
+        	    ->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'))
+        	    ->order($db->qn('ordering'))
+        	    );
+    	    JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+    	    $results = $db->loadRowList();
+    	    JLog::add(new JLogEntry(print_r($results, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
 	    
-	    // Check for a database error.
-	    if ($db->getErrorNum()) {
-	        $this->_subject->setError($db->getErrorMsg());
-	        return false;
+    	    // Check for a database error.
+    	    if ($db->getErrorNum()) {
+    	        $this->_subject->setError($db->getErrorMsg());
+    	        return false;
+    	    }
+	    
+    	    // Merge the profile data.
+    	    $data->passwordpolicy = array();
+    	    foreach ($results as $v) {
+    	        $k = str_replace('passwordpolicy.', '', $v[0]);
+    	        $data->passwordpolicy[$k] = json_decode($v[1], true);
+    	    }
 	    }
-	    
-	    // Merge the profile data.
-	    $data->passwordpolicy = array();
-	    foreach ($results as $v) {
-	        $k = str_replace('passwordpolicy.', '', $v[0]);
-	        $data->passwordpolicy[$k] = json_decode($v[1], true);
-	    }
-	    
-	    JLog::add(new JLogEntry(print_r($data, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
+
 	    return true;
 	}
 
@@ -353,4 +385,3 @@ class plgUserPasswordpolicy extends JPlugin
 	    $form->loadFile('profile', false);
 	}
 }
-	
