@@ -176,12 +176,6 @@ class plgUserPasswordpolicy extends JPlugin
 	    JLog::add(new JLogEntry('user: '.print_r($user, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
 	    $userId	= JArrayHelper::getValue($user, 'id', 0, 'int');
 
-/**				
-				if (isset($user['password2']))
-				{
-				    $db->q('passwordpolicy.pwdLastSet').', '.$db->q(json_encode(JFactory::getDate()->toSql()))
-				}
-*/
 	    if ($userId && $success)
 	    {
 	        // Load the profile data from the database.
@@ -215,7 +209,24 @@ class plgUserPasswordpolicy extends JPlugin
 
 	        if (isset($user['password_clear']) && $user['password_clear'])
 	        {
-	            $data_passwordpolicy['pwdLastSet'] = JFactory::getDate()->toSql();
+	            $now = JFactory::getDate();
+	            $data_passwordpolicy['pwdLastSet'] = $now->toSql();
+
+	            if ($enforcePasswordHistory = $this->params->get('enforcePasswordHistory', 0))
+	            {
+    	            if (!isset($data_passwordpolicy['passwordHistory']))
+    	            {
+    	                $data_passwordpolicy['passwordHistory'] = array($user['password']);
+    	            }
+    	            else 
+    	            {
+    	                if (count($data_passwordpolicy['passwordHistory']) >= $enforcePasswordHistory)
+    	                {
+    	                    array_pop($data_passwordpolicy['passwordHistory']);
+    	                }
+    	                array_unshift($data_passwordpolicy['passwordHistory'], $user['password']);
+    	            }
+	            }
 	        }
 	        JLog::add(new JLogEntry('data_passwordpolicy: '.print_r($data_passwordpolicy, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
 	        
@@ -401,56 +412,74 @@ class plgUserPasswordpolicy extends JPlugin
 	public function onUserBeforeSave($user, $isnew, $data)
 	{
 	    JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
-	    
-	    $minimumPasswordAge = $this->params->get('minimumPasswordAge', 0);
-	    
-	    if (!$isnew && $data['password'] && $minimumPasswordAge)
-	    {
-	        $today    = JFactory::getDate();
 
-	        // Load the profile data from the database.
-	        $db = JFactory::getDbo();
-	        $db->setQuery($query = $db->getQuery(true)
-	            ->select(array('profile_key','profile_value'))
-	            ->from($db->qn('#__user_profiles'))
-	            ->where($db->qn('user_id') . ' = ' . $user['id'])
-	            ->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'))
-	            ->order($db->qn('ordering'))
-	            );
-	        JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
-	        $results = $db->loadRowList();
-	        JLog::add(new JLogEntry(print_r($results, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
+        // Load the profile data from the database.
+        $db = JFactory::getDbo();
+        $db->setQuery($query = $db->getQuery(true)
+            ->select(array('profile_key','profile_value'))
+            ->from($db->qn('#__user_profiles'))
+            ->where($db->qn('user_id') . ' = ' . $user['id'])
+            ->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'))
+            ->order($db->qn('ordering'))
+            );
+        JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+        $results = $db->loadRowList();
+        JLog::add(new JLogEntry(print_r($results, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
 
-	        // Check for a database error.
-	        if ($db->getErrorNum()) {
-	            $this->_subject->setError($db->getErrorMsg());
-	            return false;
-	        }
+        // Check for a database error.
+        if ($db->getErrorNum()) {
+            $this->_subject->setError($db->getErrorMsg());
+            return false;
+        }
 
-	        $passwordpolicy = array();
-	        foreach ($results as $v)
-	        {
-	            $k = str_replace('passwordpolicy.', '', $v[0]);
-	            $passwordpolicy[$k] = json_decode($v[1], true);
-	        }
+        $passwordpolicy = array();
+        foreach ($results as $v)
+        {
+            $k = str_replace('passwordpolicy.', '', $v[0]);
+            $passwordpolicy[$k] = json_decode($v[1], true);
+        }
 
-	        if (isset($passwordpolicy['maximumPasswordAge']) && $passwordpolicy['maximumPasswordAge'] && ((int)$passwordpolicy['maximumPasswordAge'] <= $minimumPasswordAge))
-	        {
-	            $minimumPasswordAge = $passwordpolicy['maximumPasswordAge'] - 1;
-	        }
+        if (!$isnew && $data['password_clear'])
+        {
+            if ($minimumPasswordAge = $this->params->get('minimumPasswordAge', 0))
+            {
+                $today    = JFactory::getDate();
+                
+                if (isset($passwordpolicy['maximumPasswordAge']) && $passwordpolicy['maximumPasswordAge'] && ((int)$passwordpolicy['maximumPasswordAge'] <= $minimumPasswordAge))
+    	        {
+    	            $minimumPasswordAge = $passwordpolicy['maximumPasswordAge'] - 1;
+    	        }
+    
+    	        $date = new JDate((isset($passwordpolicy['pwdLastSet']) ? $passwordpolicy['pwdLastSet'] : $user->registerDate) . ' + ' . $minimumPasswordAge . ' days');
+    
+    	        JLog::add(new JLogEntry('date: ' . $date, JLog::DEBUG, 'plg_user_passwordpolicy'));
+    	        if ($date > $today)
+    	        {
+    	            $this->_subject->setError(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'));
+    	            // $this->_subject->setError() doesn't work
+    	            JLog::add(new JLogEntry(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'), JLog::WARNING, 'plg_user_passwordpolicy'));
+    	            return false;
+    	        }
+    	    }
 
-	        $date = new JDate((isset($passwordpolicy['pwdLastSet']) ? $passwordpolicy['pwdLastSet'] : $user->registerDate) . ' + ' . $minimumPasswordAge . ' days');
+    	    if ($enforcePasswordHistory = $this->params->get('enforcePasswordHistory', 0))
+            {
+                if (isset($passwordpolicy['passwordHistory']))
+                {
+                    foreach ($passwordpolicy['passwordHistory'] as $password)
+                    {
+                        if (JUserHelper::verifyPassword($data['password_clear'], $password, 0))
+                        {
+                            $this->_subject->setError(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'));
+                            // $this->_subject->setError() doesn't work
+                            JLog::add(new JLogEntry(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'), JLog::WARNING, 'plg_user_passwordpolicy'));
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
 
-	        JLog::add(new JLogEntry('date: ' . $date, JLog::DEBUG, 'plg_user_passwordpolicy'));
-	        if ($date > $today)
-	        {
-	            $this->_subject->setError(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'));
-	            // $this->_subject->setError() doesn't work
-	            JLog::add(new JLogEntry(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'), JLog::WARNING, 'plg_user_passwordpolicy'));
-	            return false;
-	        }
-	    }
-
-	    return true;
+        return true;
 	}
 }
