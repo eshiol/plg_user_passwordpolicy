@@ -392,31 +392,41 @@ class plgUserPasswordpolicy extends JPlugin
 	    
 	    if (!$isnew && $data['password'] && $minimumPasswordAge)
 	    {
-	        JLog::add(new JLogEntry('minimumPasswordAge: ' . $minimumPasswordAge, JLog::DEBUG, 'plg_user_passwordpolicy'));
-	        
-	        $userId   = $user['id'];
-	        $db		  = JFactory::getDbo();
-	        $nullDate = $db->getNullDate();
-	        $today	  = JFactory::getDate();
-	        
-	        $query	  = $db->getQuery(true)
-    	        ->select('profile_value')
-    	        ->from($db->qn('#__user_profiles'))
-    	        ->where($db->qn('user_id') . ' = ' . $userId)
-    	        ->where($db->qn('profile_key') . ' = ' . $db->q('passwordpolicy.pwdLastSet'))
-    	        ;
-	        $db->setQuery($query);
-	        
-	        try
-	        {
-	            $pwdLastSet = (json_decode($db->loadResult()) ?: $nullDate);
+	        $today    = JFactory::getDate();
+
+	        // Load the profile data from the database.
+	        $db = JFactory::getDbo();
+	        $db->setQuery($query = $db->getQuery(true)
+	            ->select(array('profile_key','profile_value'))
+	            ->from($db->qn('#__user_profiles'))
+	            ->where($db->qn('user_id') . ' = ' . $user['id'])
+	            ->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'))
+	            ->order($db->qn('ordering'))
+	            );
+	        JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+	        $results = $db->loadRowList();
+	        JLog::add(new JLogEntry(print_r($results, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
+
+	        // Check for a database error.
+	        if ($db->getErrorNum()) {
+	            $this->_subject->setError($db->getErrorMsg());
+	            return false;
 	        }
-	        catch (Exception $e)
+
+	        $passwordpolicy = array();
+	        foreach ($results as $v)
 	        {
-	            $pwdLastSet = $nullDate;
+	            $k = str_replace('passwordpolicy.', '', $v[0]);
+	            $passwordpolicy[$k] = json_decode($v[1], true);
 	        }
-	        $date = new JDate((($pwdLastSet != $nullDate) ? $pwdLastSet : $user['registerDate']) . ' + ' . $minimumPasswordAge . ' days');
-	        
+
+	        if (isset($passwordpolicy['maximumPasswordAge']) && $passwordpolicy['maximumPasswordAge'] && ((int)$passwordpolicy['maximumPasswordAge'] <= $minimumPasswordAge))
+	        {
+	            $minimumPasswordAge = $passwordpolicy['maximumPasswordAge'] - 1;
+	        }
+
+	        $date = new JDate((isset($passwordpolicy['pwdLastSet']) ? $passwordpolicy['pwdLastSet'] : $user->registerDate) . ' + ' . $minimumPasswordAge . ' days');
+
 	        JLog::add(new JLogEntry('date: ' . $date, JLog::DEBUG, 'plg_user_passwordpolicy'));
 	        if ($date > $today)
 	        {
@@ -426,7 +436,7 @@ class plgUserPasswordpolicy extends JPlugin
 	            return false;
 	        }
 	    }
-	    
+
 	    return true;
 	}
 }
