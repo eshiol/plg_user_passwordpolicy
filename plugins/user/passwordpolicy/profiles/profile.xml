@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-	
+
 <form>
 	<fields name="passwordpolicy">
 		<fieldset name="passwordpolicy"
 			label="PLG_USER_PASSWORDPOLICY_SLIDER_LABEL"
 		>
-			<field 
+			<field
 				name="pwdLastSet"
 				type="calendar"
 				label="PLG_USER_PASSWORDPOLICY_PASSWORDLASTSET_LABEL"
@@ -19,10 +19,11 @@
 			/>
 			<field
 				name="maximumPasswordAge"
-				type="integer"
+				type="number"
 				default="0"
 				label="PLG_USER_PASSWORDPOLICY_MAXIMUMPASSWORDAGE_LABEL"
 				description="PLG_USER_PASSWORDPOLICY_MAXIMUMPASSWORDAGE_DESC"
+				filter="integer"
 				first="0"
 				last="180"
 				step="1"

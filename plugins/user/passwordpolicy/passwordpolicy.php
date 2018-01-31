@@ -84,17 +84,17 @@ class plgUserPasswordpolicy extends JPlugin
 		catch (RuntimeException $e)
 		{
 		    $this->_subject->setError($e->getMessage());
-		    
+
 		    return false;
 		}
-		
+
 		// Get the password policy data.
 		$passwordpolicy = array();
 		foreach ($results as $v)
 		{
 		    $k = str_replace('passwordpolicy.', '', $v[0]);
 		    $passwordpolicy[$k] = json_decode($v[1], true);
-		    
+
 		    if ($passwordpolicy[$k] === null)
 		    {
 		        $passwordpolicy[$k] = $v[1];
@@ -113,14 +113,14 @@ class plgUserPasswordpolicy extends JPlugin
 		    JLog::add(new JLogEntry('maximumPasswordAge: ' . $passwordpolicy['maximumPasswordAge'], JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 		    $date = new JDate((isset($passwordpolicy['pwdLastSet']) ? $passwordpolicy['pwdLastSet'] : $user->registerDate) . ' + ' . $passwordpolicy['maximumPasswordAge'] . ' days');
-  
+
 		    JLog::add(new JLogEntry('pwdLastSet: ' . (isset($passwordpolicy['pwdLastSet']) ? $passwordpolicy['pwdLastSet'] : $nullDate), JLog::DEBUG, 'plg_user_passwordpolicy'));
 			JLog::add(new JLogEntry('registerDate: ' . $user->registerDate, JLog::DEBUG, 'plg_user_passwordpolicy'));
 			JLog::add(new JLogEntry('today: ' . $today->toSql(), JLog::DEBUG, 'plg_user_passwordpolicy'));
 			JLog::add(new JLogEntry('expitation date: ' . $date->toSql(), JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 			JLog::add(new JLogEntry('passwordExpirationReminder: ' . $this->params->get('passwordExpirationReminder', 1), JLog::DEBUG, 'plg_user_passwordpolicy'));
-			
+
 			if ($date < $today)
 			{
 				// Update the reset flag
@@ -150,7 +150,7 @@ class plgUserPasswordpolicy extends JPlugin
 			    }
 			}
 		}
-		else 
+		else
 		{
 			JLog::add(new JLogEntry('Password never expires', JLog::DEBUG, 'plg_user_passwordpolicy'));
 		}
@@ -218,7 +218,7 @@ class plgUserPasswordpolicy extends JPlugin
     	            {
     	                $data_passwordpolicy['passwordHistory'] = array($user['password']);
     	            }
-    	            else 
+    	            else
     	            {
     	                if (count($data_passwordpolicy['passwordHistory']) >= $enforcePasswordHistory)
     	                {
@@ -229,9 +229,9 @@ class plgUserPasswordpolicy extends JPlugin
 	            }
 	        }
 	        JLog::add(new JLogEntry('data_passwordpolicy: '.print_r($data_passwordpolicy, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
-	        
+
 	        try
-	        {    	            
+	        {
 	            $db = JFactory::getDbo();
 	            $query = $db->getQuery(true)
     	            ->delete($db->qn('#__user_profiles'))
@@ -244,13 +244,13 @@ class plgUserPasswordpolicy extends JPlugin
 
 	            $query = $db->getQuery(true)
 	               ->insert($db->qn('#__user_profiles'));
-	            
+
 	            $tuples = array();
 	            $order	= 1;
 	            foreach ($data_passwordpolicy as $k => $v) {
 	                $query->values($userId.', '.$db->quote('passwordpolicy.'.$k).', '.$db->quote(json_encode($v)).', '.$order++);
 	            }
-	            
+
 	            JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 	            if (!$db->setQuery($query)->query()) {
 	                throw new Exception($db->getErrorMsg());
@@ -327,11 +327,11 @@ class plgUserPasswordpolicy extends JPlugin
 	    if (!in_array($context, array('com_users.profile', 'com_users.user'))){
 	        return true;
 	    }
-	    
+
 	    if (is_object($data))
 	    {
 	        $userId = isset($data->id) ? $data->id : 0;
-	    
+
     	    // Load the profile data from the database.
     	    $db = JFactory::getDbo();
     	    $db->setQuery($query = $db->getQuery(true)
@@ -344,13 +344,13 @@ class plgUserPasswordpolicy extends JPlugin
     	    JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
     	    $results = $db->loadRowList();
     	    JLog::add(new JLogEntry(print_r($results, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
-	    
+
     	    // Check for a database error.
     	    if ($db->getErrorNum()) {
     	        $this->_subject->setError($db->getErrorMsg());
     	        return false;
     	    }
-	    
+
     	    // Merge the profile data.
     	    $data->passwordpolicy = array();
     	    foreach ($results as $v) {
@@ -374,11 +374,11 @@ class plgUserPasswordpolicy extends JPlugin
 	{
 	    JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
 	    JLog::add(new JLogEntry(print_r($data, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
-	    
+
 	    if (!($form instanceof JForm))
 	    {
 	        $this->_subject->setError('JERROR_NOT_A_FORM');
-	        
+
 	        return false;
 	    }
 
@@ -413,6 +413,11 @@ class plgUserPasswordpolicy extends JPlugin
 	{
 	    JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
 
+	    if (JFactory::getApplication()->isAdmin())
+	    {
+	        return true;
+	    }
+
         // Load the profile data from the database.
         $db = JFactory::getDbo();
         $db->setQuery($query = $db->getQuery(true)
@@ -441,17 +446,17 @@ class plgUserPasswordpolicy extends JPlugin
 
         if (!$isnew && $data['password_clear'])
         {
-            if ($minimumPasswordAge = $this->params->get('minimumPasswordAge', 0))
+            if (($user['requireReset'] == 0) && ($minimumPasswordAge = $this->params->get('minimumPasswordAge', 0)))
             {
                 $today    = JFactory::getDate();
-                
+
                 if (isset($passwordpolicy['maximumPasswordAge']) && $passwordpolicy['maximumPasswordAge'] && ((int)$passwordpolicy['maximumPasswordAge'] <= $minimumPasswordAge))
     	        {
     	            $minimumPasswordAge = $passwordpolicy['maximumPasswordAge'] - 1;
     	        }
-    
+
     	        $date = new JDate((isset($passwordpolicy['pwdLastSet']) ? $passwordpolicy['pwdLastSet'] : $user->registerDate) . ' + ' . $minimumPasswordAge . ' days');
-    
+
     	        JLog::add(new JLogEntry('date: ' . $date, JLog::DEBUG, 'plg_user_passwordpolicy'));
     	        if ($date > $today)
     	        {

@@ -18,7 +18,7 @@ defined('JPATH_PLATFORM') or die;
 use Joomla\Registry\Registry;
 
 /**
- * JFormRule for plg_user_passwordpolicy 
+ * JFormRule for plg_user_passwordpolicy
  *
  * @since  3.8.2
  */
@@ -45,24 +45,24 @@ class JFormRulePasswordage extends JFormRule
 	public function test(SimpleXMLElement $element, $value, $group = null, Registry $input = null, JForm $form = null)
 	{
 	    $field = (string) $element['field'];
-	    
+
 	    // Check that a validation field is set.
 	    if (!$field)
 	    {
 	        throw new \UnexpectedValueException(sprintf('$field empty in %s::test', get_class($this)));
 	    }
-	    
+
 	    if (is_null($form))
 	    {
 	        throw new \InvalidArgumentException(sprintf('The value for $form must not be null in %s', get_class($this)));
 	    }
-	    
+
 	    if (is_null($input))
 	    {
 	        throw new \InvalidArgumentException(sprintf('The value for $input must not be null in %s', get_class($this)));
 	    }
-	    
-	    if ($value == 0) 
+
+	    if ($value == 0)
 	    {
 	        $test = 1;
 	    }
@@ -70,11 +70,11 @@ class JFormRulePasswordage extends JFormRule
 	    {
 	        $test = $input->get($group . '.' . $field);
 	    }
-	    else 
+	    else
 	    {
 	        $test = $input->get($field);
 	    }
-	    
+
 	    return $value < $test;
 	}
 }
