@@ -119,6 +119,8 @@ class plgUserPasswordpolicy extends JPlugin
 			JLog::add(new JLogEntry('today: ' . $today->toSql(), JLog::DEBUG, 'plg_user_passwordpolicy'));
 			JLog::add(new JLogEntry('expitation date: ' . $date->toSql(), JLog::DEBUG, 'plg_user_passwordpolicy'));
 
+			JLog::add(new JLogEntry('passwordExpirationReminder: ' . $this->params->get('passwordExpirationReminder', 1), JLog::DEBUG, 'plg_user_passwordpolicy'));
+			
 			if ($date < $today)
 			{
 				// Update the reset flag
@@ -134,6 +136,18 @@ class plgUserPasswordpolicy extends JPlugin
 				catch (RuntimeException $e)
 				{
 				}
+			}
+			elseif ($this->params->get('passwordExpirationReminder', 1))
+			{
+			    JLog::add(new JLogEntry('passwordExpirationReminder', JLog::DEBUG, 'plg_user_passwordpolicy'));
+			    if (($days = $today->diff($date)->format('%a') + 1) == 1)
+			    {
+			        JLog::add(new JLogEntry(JText::sprintf('PLG_USER_PASSWORDPOLICY_PASSWORDLLEXPIREIN_1', $days), JLog::WARNING, 'plg_user_passwordpolicy'));
+			    }
+			    elseif (in_array($days, array(2, 3, 7, 15, 30)))
+			    {
+			        JLog::add(new JLogEntry(JText::sprintf('PLG_USER_PASSWORDPOLICY_PASSWORDLLEXPIREIN', $days), JLog::WARNING, 'plg_user_passwordpolicy'));
+			    }
 			}
 		}
 		else 
