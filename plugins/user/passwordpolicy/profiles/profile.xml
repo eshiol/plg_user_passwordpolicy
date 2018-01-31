@@ -24,8 +24,8 @@
 				label="PLG_USER_PASSWORDPOLICY_MAXIMUMPASSWORDAGE_LABEL"
 				description="PLG_USER_PASSWORDPOLICY_MAXIMUMPASSWORDAGE_DESC"
 				filter="integer"
-				first="0"
-				last="180"
+				min="0"
+				max="180"
 				step="1"
 			/>
 		</fieldset>
