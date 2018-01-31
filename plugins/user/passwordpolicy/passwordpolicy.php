@@ -385,4 +385,72 @@ class plgUserPasswordpolicy extends JPlugin
 	    JForm::addFormPath(__DIR__ . '/profiles');
 	    $form->loadFile('profile', false);
 	}
+
+	/**
+	 * Method is called before user data is stored in the database
+	 *
+	 * @param   array	$user   Holds the old user data.
+	 * @param   boolean  $isnew  True if a new user is stored.
+	 * @param   array	$data   Holds the new user data.
+	 *
+	 * @return	boolean
+	 *
+	 * @since   3.8.2
+	 * @throws	InvalidArgumentException on invalid date.
+	 */
+	public function onUserBeforeSave($user, $isnew, $data)
+	{
+	    JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
+	    
+	    $minimumPasswordAge = $this->params->get('minimumPasswordAge', 0);
+	    
+	    if (!$isnew && $data['password'] && $minimumPasswordAge)
+	    {
+	        $today    = JFactory::getDate();
+
+	        // Load the profile data from the database.
+	        $db = JFactory::getDbo();
+	        $db->setQuery($query = $db->getQuery(true)
+	            ->select(array('profile_key','profile_value'))
+	            ->from($db->qn('#__user_profiles'))
+	            ->where($db->qn('user_id') . ' = ' . $user['id'])
+	            ->where($db->qn('profile_key') . ' LIKE ' . $db->q('passwordpolicy.%'))
+	            ->order($db->qn('ordering'))
+	            );
+	        JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+	        $results = $db->loadRowList();
+	        JLog::add(new JLogEntry(print_r($results, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
+
+	        // Check for a database error.
+	        if ($db->getErrorNum()) {
+	            $this->_subject->setError($db->getErrorMsg());
+	            return false;
+	        }
+
+	        $passwordpolicy = array();
+	        foreach ($results as $v)
+	        {
+	            $k = str_replace('passwordpolicy.', '', $v[0]);
+	            $passwordpolicy[$k] = json_decode($v[1], true);
+	        }
+
+	        if (isset($passwordpolicy['maximumPasswordAge']) && $passwordpolicy['maximumPasswordAge'] && ((int)$passwordpolicy['maximumPasswordAge'] <= $minimumPasswordAge))
+	        {
+	            $minimumPasswordAge = $passwordpolicy['maximumPasswordAge'] - 1;
+	        }
+
+	        $date = new JDate((isset($passwordpolicy['pwdLastSet']) ? $passwordpolicy['pwdLastSet'] : $user->registerDate) . ' + ' . $minimumPasswordAge . ' days');
+
+	        JLog::add(new JLogEntry('date: ' . $date, JLog::DEBUG, 'plg_user_passwordpolicy'));
+	        if ($date > $today)
+	        {
+	            $this->_subject->setError(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'));
+	            // $this->_subject->setError() doesn't work
+	            JLog::add(new JLogEntry(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'), JLog::WARNING, 'plg_user_passwordpolicy'));
+	            return false;
+	        }
+	    }
+
+	    return true;
+	}
 }
