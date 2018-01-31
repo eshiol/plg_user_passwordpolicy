@@ -341,5 +341,62 @@ class plgUserPasswordpolicy extends JPlugin
 	    JForm::addFormPath(__DIR__ . '/profiles');
 	    $form->loadFile('profile', false);
 	}
+
+	/**
+	 * Method is called before user data is stored in the database
+	 *
+	 * @param   array	$user   Holds the old user data.
+	 * @param   boolean  $isnew  True if a new user is stored.
+	 * @param   array	$data   Holds the new user data.
+	 *
+	 * @return	boolean
+	 *
+	 * @since   3.8.2
+	 * @throws	InvalidArgumentException on invalid date.
+	 */
+	public function onUserBeforeSave($user, $isnew, $data)
+	{
+	    JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
+	    
+	    $minimumPasswordAge = $this->params->get('minimumPasswordAge', 0);
+	    
+	    if (!$isnew && $data['password'] && $minimumPasswordAge)
+	    {
+	        JLog::add(new JLogEntry('minimumPasswordAge: ' . $minimumPasswordAge, JLog::DEBUG, 'plg_user_passwordpolicy'));
+	        
+	        $userId   = $user['id'];
+	        $db		  = JFactory::getDbo();
+	        $nullDate = $db->getNullDate();
+	        $today	  = JFactory::getDate();
+	        
+	        $query	  = $db->getQuery(true)
+    	        ->select('profile_value')
+    	        ->from($db->qn('#__user_profiles'))
+    	        ->where($db->qn('user_id') . ' = ' . $userId)
+    	        ->where($db->qn('profile_key') . ' = ' . $db->q('passwordpolicy.pwdLastSet'))
+    	        ;
+	        $db->setQuery($query);
+	        
+	        try
+	        {
+	            $pwdLastSet = (json_decode($db->loadResult()) ?: $nullDate);
+	        }
+	        catch (Exception $e)
+	        {
+	            $pwdLastSet = $nullDate;
+	        }
+	        $date = new JDate((($pwdLastSet != $nullDate) ? $pwdLastSet : $user['registerDate']) . ' + ' . $minimumPasswordAge . ' days');
+	        
+	        JLog::add(new JLogEntry('date: ' . $date, JLog::DEBUG, 'plg_user_passwordpolicy'));
+	        if ($date > $today)
+	        {
+	            $this->_subject->setError(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'));
+	            // $this->_subject->setError() doesn't work
+	            JLog::add(new JLogEntry(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'), JLog::WARNING, 'plg_user_passwordpolicy'));
+	            return false;
+	        }
+	    }
+	    
+	    return true;
+	}
 }
-	
