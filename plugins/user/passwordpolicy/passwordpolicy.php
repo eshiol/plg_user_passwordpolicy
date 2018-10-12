@@ -101,12 +101,14 @@ class plgUserPasswordpolicy extends JPlugin
 		    }
 		}
 
-		if (!isset($passwordpolicy['maximumPasswordAge']))
+		if (isset($passwordpolicy['maximumPasswordAge']) &&  $passwordpolicy['maximumPasswordAge'])
 		{
-		    $passwordpolicy['maximumPasswordAge'] = 0;
+			$passwordpolicy['maximumPasswordAge'] = min($passwordpolicy['maximumPasswordAge'], (int)$this->params->get('maximumPasswordAge'), $passwordpolicy['maximumPasswordAge']);
 		}
-
-		$passwordpolicy['maximumPasswordAge'] = min($passwordpolicy['maximumPasswordAge'], (int)$this->params->get('maximumPasswordAge', $passwordpolicy['maximumPasswordAge']));
+		else
+		{
+			$passwordpolicy['maximumPasswordAge'] = (int)$this->params->get('maximumPasswordAge');
+		}
 
 		if ($passwordpolicy['maximumPasswordAge'])
 		{
