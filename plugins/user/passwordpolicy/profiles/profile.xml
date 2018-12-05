@@ -28,6 +28,16 @@
 				max="180"
 				step="1"
 			/>
+			<field
+				name="expiryDate"
+				type="calendar"
+				label="PLG_USER_PASSWORDPOLICY_EXPIRYDATE_LABEL"
+				description="PLG_USER_PASSWORDPOLICY_EXPIRYDATE_DESC"
+				translateformat="true"
+				showtime="true"
+				size="22"
+				filter="user_utc"
+			/>
 		</fieldset>
 	</fields>
 </form>
