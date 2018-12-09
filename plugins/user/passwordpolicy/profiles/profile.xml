@@ -15,7 +15,7 @@
 				translateformat="true"
 				showtime="true"
 				size="22"
-				filter="user_utc"
+				filter="server_utc"
 			/>
 			<field
 				name="maximumPasswordAge"
@@ -36,7 +36,7 @@
 				translateformat="true"
 				showtime="true"
 				size="22"
-				filter="user_utc"
+				filter="server_utc"
 			/>
 		</fieldset>
 	</fields>
