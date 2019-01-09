@@ -5,7 +5,7 @@
  *
  * @author		Helios Ciancio <info@eshiol.it>
  * @link		http://www.eshiol.it
- * @copyright	Copyright (C) 2018 Helios Ciancio. All Rights Reserved
+ * @copyright	Copyright (C) 2018, 2019 Helios Ciancio. All Rights Reserved
  * @license		http://www.gnu.org/licenses/gpl-3.0.html GNU/GPL v3
  * Password Policy for Joomla! is free software. This version may have been
  * modified pursuant to the GNU General Public License, and as distributed
@@ -214,6 +214,7 @@ class plgUserPasswordpolicy extends JPlugin
 				->where($this->db->quoteName('u.id') . ' = ' . $this->db->quoteName('p.user_id'))
 				->where($this->db->quoteName('p.profile_key') . ' = ' . $this->db->quote('passwordpolicy.expiryDate'))
 				->where($this->db->quoteName('p.profile_value') . ' < ' . $this->db->quote('"' . $now->toSql() . '"'))
+				->where($this->db->quoteName('p.profile_value') . ' <> ' . $this->db->quote('""'))
 				->where($this->db->quoteName('u.block') . ' = 0');
 
 			$pks = $this->db->setQuery($query)->loadColumn();
