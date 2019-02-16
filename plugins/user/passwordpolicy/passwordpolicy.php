@@ -73,9 +73,9 @@ class plgUserPasswordpolicy extends JPlugin
 			JLog::addLogger(
 					array(
 							'text_file' => $this->params->get('log', 'eshiol.log.php'),
-							'extension' => 'plg_users_passwordpolicy_file'
+							'extension' => 'plg_user_passwordpolicy_file'
 					), JLog::ALL, array(
-							'plg_users_passwordpolicy'
+							'plg_user_passwordpolicy'
 					));
 		}
 
@@ -83,31 +83,31 @@ class plgUserPasswordpolicy extends JPlugin
 		{
 			JLog::addLogger(array(
 					'logger' => 'echo',
-					'extension' => 'plg_users_passwordpolicy'
+					'extension' => 'plg_user_passwordpolicy'
 			), JLOG::ALL & ~ JLOG::DEBUG, array(
-					'plg_users_passwordpolicy'
+					'plg_user_passwordpolicy'
 			));
 		}
 		else
 		{
 			JLog::addLogger(array(
 					'logger' => $this->params->get('logger', 'messagequeue'),
-					'extension' => 'plg_users_passwordpolicy'
+					'extension' => 'plg_user_passwordpolicy'
 			), JLOG::ALL & ~ JLOG::DEBUG, array(
-					'plg_users_passwordpolicy'
+					'plg_user_passwordpolicy'
 			));
 			if ($this->params->get('phpconsole') && class_exists('JLogLoggerPhpconsole'))
 			{
 				JLog::addLogger(array(
 						'logger' => 'phpconsole',
-						'extension' => 'plg_users_passwordpolicy_phpconsole'
+						'extension' => 'plg_user_passwordpolicy_phpconsole'
 				), JLOG::DEBUG, array(
-						'plg_users_passwordpolicy'
+						'plg_user_passwordpolicy'
 				));
 			}
 		}
 
-		JLog::add(new JLogEntry(__METHOD__, JLOG::DEBUG, 'plg_users_passwordpolicy'));
+		JLog::add(new JLogEntry(__METHOD__, JLOG::DEBUG, 'plg_user_passwordpolicy'));
 	}
 
 	/**
@@ -122,11 +122,11 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onUserAuthorisation ($user, $options)
 	{
-		JLog::add(__METHOD__, JLog::DEBUG, 'plg_users_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
 
 		$userId = JUserHelper::getUserId($user->username);
 		$now = new JDate();
-		JLog::add('now: ' . $now, JLog::DEBUG, 'plg_users_passwordpolicy');
+		JLog::add(new JLogEntry('now: ' . $now, JLog::DEBUG, 'plg_user_passwordpolicy');
 		$nullDate = $this->db->getNullDate();
 
 		$query = $this->db->getQuery(true)
@@ -184,7 +184,7 @@ class plgUserPasswordpolicy extends JPlugin
 			else
 			{
 				$expiryDate = new JDate($passwordpolicy['expiryDate']);
-				JLog::add('expiryDate: ' . $expiryDate, JLog::DEBUG, 'plg_users_passwordpolicy');
+				JLog::add(new JLogEntry('expiryDate: ' . $expiryDate, JLog::DEBUG, 'plg_user_passwordpolicy');
 
 				if ($expiryDate < $now)
 				{
@@ -235,7 +235,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onUserAfterLogin ($options)
 	{
-		JLog::add(__METHOD__, JLog::DEBUG, 'plg_users_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
 
 		$user = $options['user'];
 		$userId = $user->id;
@@ -313,7 +313,7 @@ class plgUserPasswordpolicy extends JPlugin
 			{
 				if (($days = $now->diff($date)->format('%a') + 1) == 1)
 				{
-					JLog::add(
+					JLog::add(new JLogEntry(
 							new JLogEntry(JText::sprintf('PLG_USER_PASSWORDPOLICY_PASSWORDLLEXPIREIN_1', $days), JLog::WARNING,
 									'plg_user_passwordpolicy'));
 				}
@@ -325,7 +325,7 @@ class plgUserPasswordpolicy extends JPlugin
 						30
 				)))
 				{
-					JLog::add(
+					JLog::add(new JLogEntry(
 							new JLogEntry(JText::sprintf('PLG_USER_PASSWORDPOLICY_PASSWORDLLEXPIREIN', $days), JLog::WARNING, 'plg_user_passwordpolicy'));
 				}
 			}
@@ -409,7 +409,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onContentPrepareData ($context, $data)
 	{
-		JLog::add(__METHOD__, JLog::DEBUG, 'plg_users_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
 
 		// Check we are manipulating a valid form.
 		// if (!in_array($context,
@@ -470,7 +470,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onContentPrepareForm ($form, $data)
 	{
-		JLog::add(__METHOD__, JLog::DEBUG, 'plg_users_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
 
 		if (! ($form instanceof JForm))
 		{
@@ -495,7 +495,7 @@ class plgUserPasswordpolicy extends JPlugin
 		{
 			unset($data->passwordpolicy['expiryDate']);
 		}
-		JLog::add(print_r($data, true), JLog::DEBUG, 'plg_users_passwordpolicy');
+		JLog::add(new JLogEntry(print_r($data, true), JLog::DEBUG, 'plg_user_passwordpolicy');
 
 		// Add the registration fields to the form.
 		JForm::addFormPath(__DIR__ . '/profiles');
@@ -519,7 +519,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onUserBeforeSave ($user, $isnew, $data)
 	{
-		JLog::add(__METHOD__, JLog::DEBUG, 'plg_users_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
 
 		$now = new JDate();
 
@@ -583,7 +583,7 @@ class plgUserPasswordpolicy extends JPlugin
 						{
 							$this->_subject->setError(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'));
 							// $this->_subject->setError() doesn't work
-							JLog::add(
+							JLog::add(new JLogEntry(
 									new JLogEntry(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'), JLog::WARNING, 'plg_user_passwordpolicy'));
 							return false;
 						}
@@ -614,7 +614,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onUserAfterSave ($user, $isnew, $success, $msg)
 	{
-		JLog::add(__METHOD__, JLog::DEBUG, 'plg_users_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
 
 		$userId = JArrayHelper::getValue($user, 'id', 0, 'int');
 		$now = new JDate();
@@ -743,7 +743,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	function onUserAfterDelete ($user, $success, $msg)
 	{
-		JLog::add(__METHOD__, JLog::DEBUG, 'plg_users_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
 
 		if (! $success)
 		{
