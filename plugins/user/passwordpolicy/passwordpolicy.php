@@ -122,11 +122,11 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onUserAuthorisation ($user, $options)
 	{
-		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 		$userId = JUserHelper::getUserId($user->username);
 		$now = new JDate();
-		JLog::add(new JLogEntry('now: ' . $now, JLog::DEBUG, 'plg_user_passwordpolicy');
+		JLog::add(new JLogEntry('now: ' . $now, JLog::DEBUG, 'plg_user_passwordpolicy'));
 		$nullDate = $this->db->getNullDate();
 
 		$query = $this->db->getQuery(true)
@@ -138,6 +138,7 @@ class plgUserPasswordpolicy extends JPlugin
 			->where($this->db->quoteName('user_id') . ' = ' . $userId)
 			->where($this->db->quoteName('profile_key') . ' LIKE ' . $this->db->quote('passwordpolicy.%'))
 			->order('ordering');
+		JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 		$this->db->setQuery($query);
 
 		try
@@ -173,6 +174,7 @@ class plgUserPasswordpolicy extends JPlugin
 					->delete($this->db->quoteName('#__user_profiles'))
 					->where($this->db->quoteName('user_id') . ' = ' . $userId)
 					->where($this->db->quoteName('profile_key') . ' = ' . $this->db->quote('passwordpolicy.expiryDate'));
+				JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 				try
 				{
 					$this->db->setQuery($query)->execute();
@@ -184,7 +186,7 @@ class plgUserPasswordpolicy extends JPlugin
 			else
 			{
 				$expiryDate = new JDate($passwordpolicy['expiryDate']);
-				JLog::add(new JLogEntry('expiryDate: ' . $expiryDate, JLog::DEBUG, 'plg_user_passwordpolicy');
+				JLog::add(new JLogEntry('expiryDate: ' . $expiryDate, JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 				if ($expiryDate < $now)
 				{
@@ -195,6 +197,7 @@ class plgUserPasswordpolicy extends JPlugin
 							->update($this->db->quoteName('#__users'))
 							->set($this->db->quoteName('block') . ' = 1')
 							->where($this->db->quoteName('id') . ' = ' . $userId);
+						JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 						$this->db->setQuery($query)->execute();
 
 						if ((new JVersion())->isCompatible('3.9'))
@@ -235,7 +238,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onUserAfterLogin ($options)
 	{
-		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 		$user = $options['user'];
 		$userId = $user->id;
@@ -243,14 +246,15 @@ class plgUserPasswordpolicy extends JPlugin
 		$nullDate = $this->db->getNullDate();
 
 		$query = $this->db->getQuery(true)
-			->select(array(
+			->select($this->db->quoteName(array(
 				'profile_key',
 				'profile_value'
-		))
+		)))
 			->from($this->db->quoteName('#__user_profiles'))
 			->where($this->db->quoteName('user_id') . ' = ' . $userId)
 			->where($this->db->quoteName('profile_key') . ' LIKE ' . $this->db->quote('passwordpolicy.%'))
 			->order('ordering');
+		JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 		$this->db->setQuery($query);
 
 		try
@@ -298,12 +302,12 @@ class plgUserPasswordpolicy extends JPlugin
 				// Update the reset flag
 				try
 				{
-					$this->db->setQuery(
-							$this->db->getQuery(true)
-								->update($this->db->quoteName('#__users'))
-								->set($this->db->quoteName('requireReset') . ' = 1')
-								->where($this->db->quoteName('id') . ' = ' . $user->id))
-						->execute();
+					$query = $this->db->getQuery(true);
+					$query->update($this->db->quoteName('#__users'))
+						->set($this->db->quoteName('requireReset') . ' = 1')
+						->where($this->db->quoteName('id') . ' = ' . $user->id);
+					JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+					$this->db->setQuery($query)->execute();
 				}
 				catch (RuntimeException $e)
 				{
@@ -313,7 +317,7 @@ class plgUserPasswordpolicy extends JPlugin
 			{
 				if (($days = $now->diff($date)->format('%a') + 1) == 1)
 				{
-					JLog::add(new JLogEntry(
+					JLog::add(
 							new JLogEntry(JText::sprintf('PLG_USER_PASSWORDPOLICY_PASSWORDLLEXPIREIN_1', $days), JLog::WARNING,
 									'plg_user_passwordpolicy'));
 				}
@@ -325,7 +329,7 @@ class plgUserPasswordpolicy extends JPlugin
 						30
 				)))
 				{
-					JLog::add(new JLogEntry(
+					JLog::add(
 							new JLogEntry(JText::sprintf('PLG_USER_PASSWORDPOLICY_PASSWORDLLEXPIREIN', $days), JLog::WARNING, 'plg_user_passwordpolicy'));
 				}
 			}
@@ -342,7 +346,7 @@ class plgUserPasswordpolicy extends JPlugin
 				->where($this->db->quoteName('p.profile_value') . ' < ' . $this->db->quote('"' . $now->toSql() . '"'))
 				->where($this->db->quoteName('p.profile_value') . ' <> ' . $this->db->quote('""'))
 				->where($this->db->quoteName('u.block') . ' = 0');
-
+			JLog::add(new JLogEntry($query, JLog::NOTICE, 'plg_user_passwordpolicy'));
 			$pks = $this->db->setQuery($query)->loadColumn();
 
 			// Prepare the logout options.
@@ -366,6 +370,7 @@ class plgUserPasswordpolicy extends JPlugin
 						->update($this->db->quoteName('#__users'))
 						->set($this->db->quoteName('block') . ' = 1')
 						->where($this->db->quoteName('id') . ' = ' . $id);
+					JLog::add(new JLogEntry($query, JLog::NOTICE, 'plg_user_passwordpolicy'));
 					$this->db->setQuery($query)->execute();
 
 					$tmp_user = JFactory::getUser($id);
@@ -409,7 +414,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onContentPrepareData ($context, $data)
 	{
-		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 		// Check we are manipulating a valid form.
 		// if (!in_array($context,
@@ -437,6 +442,7 @@ class plgUserPasswordpolicy extends JPlugin
 						->where($this->db->quoteName('user_id') . ' = ' . $userId)
 						->where($this->db->quoteName('profile_key') . ' LIKE ' . $this->db->quote('passwordpolicy.%'))
 						->order($this->db->quoteName('ordering')));
+			JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 			$results = $this->db->loadRowList();
 
 			// Check for a database error.
@@ -470,7 +476,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onContentPrepareForm ($form, $data)
 	{
-		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 		if (! ($form instanceof JForm))
 		{
@@ -495,7 +501,7 @@ class plgUserPasswordpolicy extends JPlugin
 		{
 			unset($data->passwordpolicy['expiryDate']);
 		}
-		JLog::add(new JLogEntry(print_r($data, true), JLog::DEBUG, 'plg_user_passwordpolicy');
+		JLog::add(new JLogEntry(print_r($data, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 		// Add the registration fields to the form.
 		JForm::addFormPath(__DIR__ . '/profiles');
@@ -519,7 +525,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onUserBeforeSave ($user, $isnew, $data)
 	{
-		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 		$now = new JDate();
 
@@ -534,6 +540,7 @@ class plgUserPasswordpolicy extends JPlugin
 					->where($this->db->quoteName('user_id') . ' = ' . $user['id'])
 					->where($this->db->quoteName('profile_key') . ' LIKE ' . $this->db->quote('passwordpolicy.%'))
 					->order($this->db->quoteName('ordering')));
+		JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 		$results = $this->db->loadRowList();
 
 		// Check for a database error.
@@ -583,7 +590,7 @@ class plgUserPasswordpolicy extends JPlugin
 						{
 							$this->_subject->setError(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'));
 							// $this->_subject->setError() doesn't work
-							JLog::add(new JLogEntry(
+							JLog::add(
 									new JLogEntry(JText::_('PLG_USER_PASSWORDPOLICY_UNABLETOUPDATEPASSWORD'), JLog::WARNING, 'plg_user_passwordpolicy'));
 							return false;
 						}
@@ -614,7 +621,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	public function onUserAfterSave ($user, $isnew, $success, $msg)
 	{
-		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 		$userId = JArrayHelper::getValue($user, 'id', 0, 'int');
 		$now = new JDate();
@@ -632,6 +639,7 @@ class plgUserPasswordpolicy extends JPlugin
 						->where($this->db->quoteName('user_id') . ' = ' . $userId)
 						->where($this->db->quoteName('profile_key') . ' LIKE ' . $this->db->quote('passwordpolicy.%'))
 						->order($this->db->quoteName('ordering')));
+			JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 			$results = $this->db->loadRowList();
 
 			// Merge the profile data.
@@ -689,12 +697,11 @@ class plgUserPasswordpolicy extends JPlugin
 					->delete($this->db->quoteName('#__user_profiles'))
 					->where($this->db->quoteName('user_id') . ' = ' . $userId)
 					->where($this->db->quoteName('profile_key') . ' LIKE ' . $this->db->quote('passwordpolicy.%'));
-				if (! $this->db->setQuery($query)->query())
+				JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+				if (! $this->db->setQuery($query)->execute())
 				{
 					throw new Exception($this->db->getErrorMsg());
 				}
-
-				$query = $this->db->getQuery(true)->insert($this->db->quoteName('#__user_profiles'));
 
 				if (isset($passwordpolicy['expiryDate']))
 				{
@@ -706,6 +713,8 @@ class plgUserPasswordpolicy extends JPlugin
 					$passwordpolicy['expiryDate'] = $expiryDate->toSql();
 				}
 
+				$query = $this->db->getQuery(true)->insert($this->db->quoteName('#__user_profiles'));
+
 				$tuples = array();
 				$order = 1;
 				foreach ($passwordpolicy as $k => $v)
@@ -714,7 +723,8 @@ class plgUserPasswordpolicy extends JPlugin
 							$userId . ', ' . $this->db->quote('passwordpolicy.' . $k) . ', ' . $this->db->quote(json_encode($v)) . ', ' . $order ++);
 				}
 
-				if (! $this->db->setQuery($query)->query())
+				JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+				if (! $this->db->setQuery($query)->execute())
 				{
 					throw new Exception($this->db->getErrorMsg());
 				}
@@ -743,7 +753,7 @@ class plgUserPasswordpolicy extends JPlugin
 	 */
 	function onUserAfterDelete ($user, $success, $msg)
 	{
-		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy');
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 		if (! $success)
 		{
@@ -760,7 +770,8 @@ class plgUserPasswordpolicy extends JPlugin
 					->delete($this->db->quoteName('#__user_profiles'))
 					->where($this->db->quoteName('user_id') . ' = ' . $userId)
 					->where($this->db->quoteName('profile_key') . ' LIKE ' . $this->db->quote('passwordpolicy.%'));
-				if (! $this->db->setQuery($query)->query())
+				JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+				if (! $this->db->setQuery($query)->execute())
 				{
 					throw new Exception($this->db->getErrorMsg());
 				}
