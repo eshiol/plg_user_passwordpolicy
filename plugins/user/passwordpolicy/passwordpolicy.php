@@ -346,7 +346,7 @@ class plgUserPasswordpolicy extends JPlugin
 				->where($this->db->quoteName('p.profile_value') . ' < ' . $this->db->quote('"' . $now->toSql() . '"'))
 				->where($this->db->quoteName('p.profile_value') . ' <> ' . $this->db->quote('""'))
 				->where($this->db->quoteName('u.block') . ' = 0');
-			JLog::add(new JLogEntry($query, JLog::NOTICE, 'plg_user_passwordpolicy'));
+			JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 			$pks = $this->db->setQuery($query)->loadColumn();
 
 			// Prepare the logout options.
@@ -370,7 +370,7 @@ class plgUserPasswordpolicy extends JPlugin
 						->update($this->db->quoteName('#__users'))
 						->set($this->db->quoteName('block') . ' = 1')
 						->where($this->db->quoteName('id') . ' = ' . $id);
-					JLog::add(new JLogEntry($query, JLog::NOTICE, 'plg_user_passwordpolicy'));
+					JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 					$this->db->setQuery($query)->execute();
 
 					$tmp_user = JFactory::getUser($id);
