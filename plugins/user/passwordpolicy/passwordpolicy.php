@@ -26,7 +26,7 @@ if ((new JVersion())->isCompatible('3.9'))
 /**
  * extends the password policy as defined by Joomla!
  *
- * @version 3.9.2
+ * @version 3.9.3
  */
 class plgUserPasswordpolicy extends JPlugin
 {
@@ -84,7 +84,7 @@ class plgUserPasswordpolicy extends JPlugin
 			JLog::addLogger(array(
 					'logger' => 'echo',
 					'extension' => 'plg_user_passwordpolicy'
-			), JLOG::ALL & ~ JLOG::DEBUG, array(
+			), JLog::ALL & ~ JLog::DEBUG, array(
 					'plg_user_passwordpolicy'
 			));
 		}
@@ -93,7 +93,7 @@ class plgUserPasswordpolicy extends JPlugin
 			JLog::addLogger(array(
 					'logger' => $this->params->get('logger', 'messagequeue'),
 					'extension' => 'plg_user_passwordpolicy'
-			), JLOG::ALL & ~ JLOG::DEBUG, array(
+			), JLog::ALL & ~ JLog::DEBUG, array(
 					'plg_user_passwordpolicy'
 			));
 			if ($this->params->get('phpconsole') && class_exists('JLogLoggerPhpconsole'))
@@ -101,13 +101,13 @@ class plgUserPasswordpolicy extends JPlugin
 				JLog::addLogger(array(
 						'logger' => 'phpconsole',
 						'extension' => 'plg_user_passwordpolicy_phpconsole'
-				), JLOG::DEBUG, array(
+				), JLog::DEBUG, array(
 						'plg_user_passwordpolicy'
 				));
 			}
 		}
 
-		JLog::add(new JLogEntry(__METHOD__, JLOG::DEBUG, 'plg_user_passwordpolicy'));
+		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
 	}
 
 	/**
@@ -165,63 +165,43 @@ class plgUserPasswordpolicy extends JPlugin
 			}
 		}
 
-		if (isset($passwordpolicy['expiryDate']) && $passwordpolicy['expiryDate'])
+		if (isset($passwordpolicy['expiryDate']) && $passwordpolicy['expiryDate'] && strtotime($passwordpolicy['expiryDate']))
 		{
-			if (! (bool) strtotime($passwordpolicy['expiryDate']))
+			$date = new JDate($passwordpolicy['expiryDate']);
+
+			if ($date < $now)
 			{
-				// Delete the malformed expiry date
-				$query = $this->db->getQuery(true)
-					->delete($this->db->quoteName('#__user_profiles'))
-					->where($this->db->quoteName('user_id') . ' = ' . $userId)
-					->where($this->db->quoteName('profile_key') . ' = ' . $this->db->quote('passwordpolicy.expiryDate'));
-				JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+				// Update the block flag
 				try
 				{
+					$query = $this->db->getQuery(true)
+						->update($this->db->quoteName('#__users'))
+						->set($this->db->quoteName('block') . ' = 1')
+						->where($this->db->quoteName('id') . ' = ' . $userId);
+					JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
 					$this->db->setQuery($query)->execute();
+
+					if ((new JVersion())->isCompatible('3.9'))
+					{
+						/** @var ActionlogsModelActionlog $model **/
+						$model = JModelLegacy::getInstance('Actionlog', 'ActionlogsModel');
+						$message = array(
+								'action' => 'update',
+								'type' => 'PLG_ACTIONLOG_JOOMLA_TYPE_USER',
+								'id' => $userId,
+								'title' => $user->fullname,
+								'itemlink' => 'index.php?option=com_users&task=user.edit&id=' . $userId,
+								'userid' => $userId,
+								'username' => $user->username,
+								'accountlink' => 'index.php?option=com_users&task=user.edit&id=' . $userId
+						);
+						$model->addLog(array(
+								$message
+						), 'PLG_SYSTEM_ACTIONLOGS_CONTENT_UPDATED', 'plg_user_passwordpolicy', $userId);
+					}
 				}
 				catch (RuntimeException $e)
 				{
-				}
-			}
-			else
-			{
-				$expiryDate = new JDate($passwordpolicy['expiryDate']);
-				JLog::add(new JLogEntry('expiryDate: ' . $expiryDate, JLog::DEBUG, 'plg_user_passwordpolicy'));
-
-				if ($expiryDate < $now)
-				{
-					// Update the block flag
-					try
-					{
-						$query = $this->db->getQuery(true)
-							->update($this->db->quoteName('#__users'))
-							->set($this->db->quoteName('block') . ' = 1')
-							->where($this->db->quoteName('id') . ' = ' . $userId);
-						JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
-						$this->db->setQuery($query)->execute();
-
-						if ((new JVersion())->isCompatible('3.9'))
-						{
-							/** @var ActionlogsModelActionlog $model **/
-							$model = JModelLegacy::getInstance('Actionlog', 'ActionlogsModel');
-							$message = array(
-									'action' => 'update',
-									'type' => 'PLG_ACTIONLOG_JOOMLA_TYPE_USER',
-									'id' => $userId,
-									'title' => $user->fullname,
-									'itemlink' => 'index.php?option=com_users&task=user.edit&id=' . $userId,
-									'userid' => $userId,
-									'username' => $user->username,
-									'accountlink' => 'index.php?option=com_users&task=user.edit&id=' . $userId
-							);
-							$model->addLog(array(
-									$message
-							), 'PLG_SYSTEM_ACTIONLOGS_CONTENT_UPDATED', 'plg_user_passwordpolicy', $userId);
-						}
-					}
-					catch (RuntimeException $e)
-					{
-					}
 				}
 			}
 		}
@@ -283,8 +263,8 @@ class plgUserPasswordpolicy extends JPlugin
 
 		if (isset($passwordpolicy['maximumPasswordAge']) && $passwordpolicy['maximumPasswordAge'])
 		{
-			$passwordpolicy['maximumPasswordAge'] = min((int) $passwordpolicy['maximumPasswordAge'], (int) $this->params->get('maximumPasswordAge', 0),
-					(int) $passwordpolicy['maximumPasswordAge']);
+			$passwordpolicy['maximumPasswordAge'] = min((int) $passwordpolicy['maximumPasswordAge'], (int) $this->params->get('maximumPasswordAge'),
+					$passwordpolicy['maximumPasswordAge']);
 		}
 		else
 		{
@@ -302,8 +282,8 @@ class plgUserPasswordpolicy extends JPlugin
 				// Update the reset flag
 				try
 				{
-					$query = $this->db->getQuery(true);
-					$query->update($this->db->quoteName('#__users'))
+					$query = $this->db->getQuery(true)
+						->update($this->db->quoteName('#__users'))
 						->set($this->db->quoteName('requireReset') . ' = 1')
 						->where($this->db->quoteName('id') . ' = ' . $user->id);
 					JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
@@ -346,7 +326,7 @@ class plgUserPasswordpolicy extends JPlugin
 				->where($this->db->quoteName('p.profile_value') . ' < ' . $this->db->quote('"' . $now->toSql() . '"'))
 				->where($this->db->quoteName('p.profile_value') . ' <> ' . $this->db->quote('""'))
 				->where($this->db->quoteName('u.block') . ' = 0');
-			JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+			JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));	
 			$pks = $this->db->setQuery($query)->loadColumn();
 
 			// Prepare the logout options.
@@ -497,9 +477,16 @@ class plgUserPasswordpolicy extends JPlugin
 			return true;
 		}
 
-		if (isset($data->passwordpolicy) && isset($data->passwordpolicy['expiryDate']) && ! (bool) strtotime($data->passwordpolicy['expiryDate']))
+		if (isset($data->passwordpolicy))
 		{
-			unset($data->passwordpolicy['expiryDate']);
+			if (isset($data->passwordpolicy['pwdLastSet']) && ! strtotime($data->passwordpolicy['pwdLastSet']))
+			{
+				unset($data->passwordpolicy['pwdLastSet']);
+			}
+			if (isset($data->passwordpolicy['expiryDate']) && ! strtotime($data->passwordpolicy['expiryDate']))
+			{
+				unset($data->passwordpolicy['expiryDate']);
+			}
 		}
 		JLog::add(new JLogEntry(print_r($data, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
 
@@ -526,6 +513,7 @@ class plgUserPasswordpolicy extends JPlugin
 	public function onUserBeforeSave ($user, $isnew, $data)
 	{
 		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
+		JLog::add(new JLogEntry(print_r($data, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 		$now = new JDate();
 
@@ -564,12 +552,12 @@ class plgUserPasswordpolicy extends JPlugin
 				if (isset($passwordpolicy['maximumPasswordAge']) && $passwordpolicy['maximumPasswordAge'] &&
 						 ((int) $passwordpolicy['maximumPasswordAge'] <= $minimumPasswordAge))
 				{
-					$minimumPasswordAge = (int) $passwordpolicy['maximumPasswordAge'] - 1;
+					$minimumPasswordAge = $passwordpolicy['maximumPasswordAge'] - 1;
 				}
 
 				$date = new JDate(
-						((isset($passwordpolicy['pwdLastSet']) && strtotime($passwordpolicy['pwdLastSet'])) ? $passwordpolicy['pwdLastSet'] : $user->registerDate) .
-								 ' + ' . $minimumPasswordAge . ' days');
+						(isset($passwordpolicy['pwdLastSet']) ? $passwordpolicy['pwdLastSet'] : $user->registerDate) . ' + ' . $minimumPasswordAge .
+								 ' days');
 
 				if ($date > $now)
 				{
@@ -599,6 +587,7 @@ class plgUserPasswordpolicy extends JPlugin
 			}
 		}
 
+		JLog::add(new JLogEntry(print_r($data, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
 		return true;
 	}
 
@@ -622,6 +611,7 @@ class plgUserPasswordpolicy extends JPlugin
 	public function onUserAfterSave ($user, $isnew, $success, $msg)
 	{
 		JLog::add(new JLogEntry(__METHOD__, JLog::DEBUG, 'plg_user_passwordpolicy'));
+		JLog::add(new JLogEntry(print_r($user, true), JLog::DEBUG, 'plg_user_passwordpolicy'));
 
 		$userId = JArrayHelper::getValue($user, 'id', 0, 'int');
 		$now = new JDate();
@@ -684,13 +674,26 @@ class plgUserPasswordpolicy extends JPlugin
 
 			if (! $user['block'] && isset($passwordpolicy['expiryDate']))
 			{
-				$expiryDate = new JDate($passwordpolicy['expiryDate']);
-				if ($expiryDate < $now)
+				if (! strtotime($passwordpolicy['expiryDate']))
 				{
 					unset($passwordpolicy['expiryDate']);
 				}
+				else
+				{
+					$expiryDate = new JDate($passwordpolicy['expiryDate']);
+					JLog::add(new JLogEntry('now: ' . $now, JLog::DEBUG, 'plg_user_passwordpolicy'));
+					JLog::add(new JLogEntry('expiryDate: ' . $passwordpolicy['expiryDate'], JLog::DEBUG, 'plg_user_passwordpolicy'));
+					if ($expiryDate < $now)
+					{
+						unset($passwordpolicy['expiryDate']);
+					}
+				}
 			}
 
+			if (isset($passwordpolicy['maximumPasswordAge']))
+			{
+				$passwordpolicy['maximumPasswordAge'] = (int) $passwordpolicy['maximumPasswordAge'];
+			}
 			try
 			{
 				$query = $this->db->getQuery(true)
@@ -701,16 +704,6 @@ class plgUserPasswordpolicy extends JPlugin
 				if (! $this->db->setQuery($query)->execute())
 				{
 					throw new Exception($this->db->getErrorMsg());
-				}
-
-				if (isset($passwordpolicy['expiryDate']))
-				{
-					// fix expiryDate timezone
-					$expiryDate = new JDate($password['expiryDate']);
-					$userObj = JFactory::getUser($userId);
-					$timeZone = new DateTimeZone($userObj->getParam('timezone', JFactory::getApplication()->get('offset')));
-					$expiryDate->setTimeZone($timeZone);
-					$passwordpolicy['expiryDate'] = $expiryDate->toSql();
 				}
 
 				$query = $this->db->getQuery(true)->insert($this->db->quoteName('#__user_profiles'));
