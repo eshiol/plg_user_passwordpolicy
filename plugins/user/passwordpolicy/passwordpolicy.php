@@ -26,7 +26,7 @@ if ((new JVersion())->isCompatible('3.9'))
 /**
  * extends the password policy as defined by Joomla!
  *
- * @version 3.9.3
+ * @version 3.9.4
  */
 class plgUserPasswordpolicy extends JPlugin
 {
@@ -545,7 +545,7 @@ class plgUserPasswordpolicy extends JPlugin
 			$passwordpolicy[$k] = json_decode($v[1], true);
 		}
 
-		if (! $isnew && $data['password_clear'])
+		if (! $isnew && isset($data['password_clear']) && $data['password_clear'])
 		{
 			if (($user['requireReset'] == 0) && ($minimumPasswordAge = $this->params->get('minimumPasswordAge', 0)))
 			{
@@ -694,38 +694,42 @@ class plgUserPasswordpolicy extends JPlugin
 			{
 				$passwordpolicy['maximumPasswordAge'] = (int) $passwordpolicy['maximumPasswordAge'];
 			}
-			try
+
+			if (count($passwordpolicy))
 			{
-				$query = $this->db->getQuery(true)
-					->delete($this->db->quoteName('#__user_profiles'))
-					->where($this->db->quoteName('user_id') . ' = ' . $userId)
-					->where($this->db->quoteName('profile_key') . ' LIKE ' . $this->db->quote('passwordpolicy.%'));
-				JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
-				if (! $this->db->setQuery($query)->execute())
+				try
 				{
-					throw new Exception($this->db->getErrorMsg());
+					$query = $this->db->getQuery(true)
+						->delete($this->db->quoteName('#__user_profiles'))
+						->where($this->db->quoteName('user_id') . ' = ' . $userId)
+						->where($this->db->quoteName('profile_key') . ' LIKE ' . $this->db->quote('passwordpolicy.%'));
+					JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+					if (! $this->db->setQuery($query)->execute())
+					{
+						throw new Exception($this->db->getErrorMsg());
+					}
+	
+					$query = $this->db->getQuery(true)->insert($this->db->quoteName('#__user_profiles'));
+	
+					$tuples = array();
+					$order = 1;
+					foreach ($passwordpolicy as $k => $v)
+					{
+						$query->values(
+								$userId . ', ' . $this->db->quote('passwordpolicy.' . $k) . ', ' . $this->db->quote(json_encode($v)) . ', ' . $order ++);
+					}
+	
+					JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
+					if (! $this->db->setQuery($query)->execute())
+					{
+						throw new Exception($this->db->getErrorMsg());
+					}
 				}
-
-				$query = $this->db->getQuery(true)->insert($this->db->quoteName('#__user_profiles'));
-
-				$tuples = array();
-				$order = 1;
-				foreach ($passwordpolicy as $k => $v)
+				catch (JException $e)
 				{
-					$query->values(
-							$userId . ', ' . $this->db->quote('passwordpolicy.' . $k) . ', ' . $this->db->quote(json_encode($v)) . ', ' . $order ++);
+					$this->_subject->setError($e->getMessage());
+					$success = false;
 				}
-
-				JLog::add(new JLogEntry($query, JLog::DEBUG, 'plg_user_passwordpolicy'));
-				if (! $this->db->setQuery($query)->execute())
-				{
-					throw new Exception($this->db->getErrorMsg());
-				}
-			}
-			catch (JException $e)
-			{
-				$this->_subject->setError($e->getMessage());
-				$success = false;
 			}
 		}
 	}
