@@ -26,7 +26,7 @@ if ((new JVersion())->isCompatible('3.9'))
 /**
  * extends the password policy as defined by Joomla!
  *
- * @version 3.9.4
+ * @version 3.9.5
  */
 class plgUserPasswordpolicy extends JPlugin
 {
@@ -261,14 +261,13 @@ class plgUserPasswordpolicy extends JPlugin
 			}
 		}
 
-		if (isset($passwordpolicy['maximumPasswordAge']) && $passwordpolicy['maximumPasswordAge'])
-		{
-			$passwordpolicy['maximumPasswordAge'] = min((int) $passwordpolicy['maximumPasswordAge'], (int) $this->params->get('maximumPasswordAge'),
-					$passwordpolicy['maximumPasswordAge']);
-		}
-		else
+		if (empty($passwordpolicy['maximumPasswordAge']))
 		{
 			$passwordpolicy['maximumPasswordAge'] = (int) $this->params->get('maximumPasswordAge');
+		}
+		elseif (!empty($this->params->get('maximumPasswordAge')))
+		{
+			$passwordpolicy['maximumPasswordAge'] = min((int) $passwordpolicy['maximumPasswordAge'], (int) $this->params->get('maximumPasswordAge'));
 		}
 
 		if ($passwordpolicy['maximumPasswordAge'])
